@@ -1,5 +1,5 @@
 /*
- ** Author: Elina Lijouvni
+ ** Author: Elina Lijouvni, Owen Cliffe
  ** License: GPL v3
  */
 
@@ -10,6 +10,7 @@
 #include <cv.h>
 #include <highgui.h>
 
+#include "low-level-leap.h"
 typedef struct ctx_s ctx_t;
 struct ctx_s
 {
@@ -21,14 +22,7 @@ struct ctx_s
 #define VFRAME_HEIGHT 240
 #define VFRAME_SIZE   (VFRAME_WIDTH * VFRAME_HEIGHT)
 
-typedef struct frame_s frame_t;
-struct frame_s
-{
 
-  uint32_t id;
-  uint32_t data_len;
-  uint32_t state;
-};
 
 
 typedef struct stereoframe_s stereoframe_t; 
@@ -78,7 +72,10 @@ process_video_frame(ctx_t *ctx, stereoframe_t *frame)
 {
   int key;
 
+  cvShowImage("left", frame->left );
+  cvShowImage("right", frame->right );
   cvShowImage(WINDOWNAME, frame->cv_image_depth_aux );
+
   key = cvWaitKey(1);
 
 if(key > 0){
@@ -126,65 +123,36 @@ if(key > 0){
 #define DIF(x,y) ((x<y)?(y-x):(x-y))
 
 static void
-process_usb_frame(ctx_t *ctx,stereoframe_t * stereo,  frame_t *frame, unsigned char *data, int size)
+process_usb_frame(ctx_t *ctx,stereoframe_t * stereo,  leap_frame_t * leap_frame)
 {
   int i;
 
-  int bHeaderLen = data[0];
-  int bmHeaderInfo = data[1];
 
-  uint32_t dwPresentationTime = *( (uint32_t *) &data[2] );
-  //printf("frame time: %u\n", dwPresentationTime);
-
-  if (frame->id == 0)
-    frame->id = dwPresentationTime;
-
-  for (i = bHeaderLen; i < size ; i += 2) {
-    if (frame->data_len >= VFRAME_SIZE)
-      break ;
-
-    CvScalar l;
-    l.val[2] = data[i];
-    l.val[1] = data[i];
-    l.val[0] = data[i]; 
-    CvScalar r;
-    r.val[2] = data[i+1];
-    r.val[1] = data[i+1];
-    r.val[0] = data[i+1]; 
-
-    int x = frame->data_len % VFRAME_WIDTH;
-    int y = frame->data_len / VFRAME_WIDTH;
-    cvSet2D(stereo->left, y, x, l);
-    cvSet2D(stereo->right, y, x, r);
-
-
-    frame->data_len++;
-  }
-
-  if (bmHeaderInfo & UVC_STREAM_EOF) {
-    //printf("End-of-Frame.  Got %i\n", frame->data_len);
-
-    if (frame->data_len != VFRAME_SIZE) {
-      //printf("wrong frame size got %i expected %i\n", frame->data_len, VFRAME_SIZE);
-      frame->data_len = 0;
-      frame->id = 0;
-      return ;
-    }
-
-    computeStereoBM(stereo);
-    process_video_frame(ctx, stereo);
-    frame->data_len = 0;
-    frame->id = 0;
-  }
-  else {
-    if (dwPresentationTime != frame->id && frame->id > 0) {
-      //printf("mixed frame TS: dropping frame\n");
-      frame->id = dwPresentationTime;
-      /* frame->data_len = 0; */
-      /* frame->id = 0; */
-      /* return ; */
+  for(int yv = 0; yv < VFRAME_HEIGHT; yv ++){
+    for(int xv = 0; xv < VFRAME_WIDTH; xv ++){
+      unsigned char lval = leap_frame_get_pixel(leap_frame,
+						LEFT,
+						xv,yv);
+      unsigned char rval = leap_frame_get_pixel(leap_frame,
+						RIGHT,
+						xv,yv);
+      
+      CvScalar l;
+      l.val[2] = lval;
+      l.val[1] = lval;
+      l.val[0] = lval; 
+      CvScalar r;
+      r.val[2] = rval;
+      r.val[1] = rval;
+      r.val[0] = rval; 
+      cvSet2D(stereo->left, yv, xv, l);
+      cvSet2D(stereo->right, yv, xv, r);
+      
     }
   }
+  
+  computeStereoBM(stereo);
+  process_video_frame(ctx, stereo);
 }
 
 
@@ -220,25 +188,31 @@ main(int argc, char *argv[])
   cvNamedWindow(WINDOWNAME, 0);
   cvResizeWindow(WINDOWNAME, VFRAME_WIDTH, VFRAME_HEIGHT * 2);
 
-  frame_t frame;
-  memset(&frame, 0, sizeof (frame));
-
-
   stereoframe_t stereo; 
 
   init_stereo_frame(&stereo);
+  leap_ctx_t * leap = leap_create();
+  
+  if(leap ==0){
+    printf("Couldn't access leap\n");
+    return 1;
+  }
+
 
   for ( ; ; ) {
-    unsigned char data[16384];
-    int usb_frame_size;
 
-    if ( feof(stdin) || ctx->quit )
+    if ( ctx->quit )
       break ;
-
-    fread(&usb_frame_size, sizeof (usb_frame_size), 1, stdin);
-    fread(data, usb_frame_size, 1, stdin);
-
-    process_usb_frame(ctx,&stereo, &frame, data, usb_frame_size);
+    leap_result_t ret;
+    do{
+      ret = leap_transfer(leap);
+      if(ret == LEAP_ERROR){
+	printf("error transfering frame\n");
+	return 1;
+      }
+    }while(ret != FRAME_TRANSFERED);
+    
+    process_usb_frame(ctx,&stereo, leap_get_current_frame(leap));
   }
 
   return (0);

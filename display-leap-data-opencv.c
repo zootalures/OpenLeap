@@ -52,11 +52,13 @@ process_video_frame(ctx_t *ctx, frame_t *frame)
 {
   int key;
 
-  cvShowImage("mainWin", frame->frame );
+  cvShowImage("SimpleStereo", frame->frame );
   key = cvWaitKey(1);
   if (key == 'q' || key == 0x1B)
     ctx->quit = 1;
 }
+
+#define DIF(x,y) ((x<y)?(y-x):(x-y))
 
 static void
 process_usb_frame(ctx_t *ctx, frame_t *frame, unsigned char *data, int size)
@@ -79,7 +81,8 @@ process_usb_frame(ctx_t *ctx, frame_t *frame, unsigned char *data, int size)
     CvScalar s;
     s.val[2] = data[i];
     s.val[1] = data[i+1];
-    s.val[0] = 0;
+    s.val[0] = 0; 
+
     int x = frame->data_len % VFRAME_WIDTH;
     int y = frame->data_len / VFRAME_WIDTH;
     cvSet2D(frame->frame, 2 * y,     x, s);
