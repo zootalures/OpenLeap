@@ -20,7 +20,7 @@
 #define VFRAME_WIDTH  (640)
 #define VFRAME_HEIGHT (240)
 #define VFRAME_SIZE   (VFRAME_WIDTH * VFRAME_HEIGHT)
-#define BOTHFRAME_SIZE   (VFRAME_SIZE * 4)
+#define BOTHFRAME_SIZE   (VFRAME_SIZE * 10)
 
 #define MAX_PACKET_SIZE (16384)
 #define LEAP_VID (0xf182)
@@ -192,11 +192,11 @@ leap_result_t leap_transfer(leap_ctx_t *ctx){
   }
 
   int data_size = read_size - bHeaderLen;
-  if(frame->frame_size +data_size  > BOTHFRAME_SIZE){
-    printf("Too many bytes in a frame ");
-    return LEAP_ERROR;
+  if(read_size < bHeaderLen){ // Not sure what is happening here 
+    debug_printf("got partial packet of size %d, skipping", read_size);
+      return PARTIAL_RESULT;
   }
-  
+  debug_printf("copying %d bytes of data to offset %d-%d (max %d)\n",data_size,frame->frame_size,frame->frame_size + data_size, BOTHFRAME_SIZE);
   memcpy(frame->data + frame->frame_size, data  + bHeaderLen,data_size);
   frame->frame_size += (data_size);
   

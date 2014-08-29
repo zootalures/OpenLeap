@@ -4,6 +4,9 @@
 typedef struct leap_ctx_s leap_ctx_t;
 typedef struct leap_frame_s leap_frame_t;
 
+/**
+ Frame transfer result 
+ */
 enum leap_result_enum{
   PARTIAL_RESULT, 
   FRAME_TRANSFERED, 

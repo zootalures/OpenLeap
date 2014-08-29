@@ -8,7 +8,7 @@ SDL_LDFLAGS = $(shell pkg-config --libs sdl)
 OPENCV_CFLAGS = $(shell pkg-config --cflags opencv)
 OPENCV_LDFLAGS = $(shell pkg-config --libs opencv)
 
-CFLAGS = -O2 -Wall  -g $(SDL_CFLAGS) $(OPENCV_CFLAGS) $(LIBUSB_CFLAGS)
+CFLAGS = -O2 -Wall  -g $(SDL_CFLAGS) $(OPENCV_CFLAGS) $(LIBUSB_CFLAGS) -DNDEBUG
 LDFLAGS = $(LIBUSB_LDFLAGS)
 
 CC = c99

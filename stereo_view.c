@@ -81,43 +81,56 @@ process_video_frame(ctx_t *ctx, stereoframe_t *frame)
 if(key > 0){
   
   switch(key){
-    
-     case 1048689: 
+    printf("got key %d\n", key) ;  
+
+    case 1048689: // q 
 	    ctx->quit = 1;
             break; 
      case 1048695: 
+       if(frame->stereo_state->preFilterSize < 251){
 	frame->stereo_state->preFilterSize+=2;
+       }
         break; 
      case 1048691: 
+       if(frame->stereo_state->preFilterSize > 7){
 	frame->stereo_state->preFilterSize-=2;
-        break; 
+       }
+       break; 
 
-    case 1048677: 
-	frame->stereo_state->preFilterCap++;
-        break; 
-     case 1048676: 
-	frame->stereo_state->preFilterCap--;
-        break; 
+  case 1048677: 
+    if(frame->stereo_state->preFilterCap < 63){
+      frame->stereo_state->preFilterCap++;
+    }
+    break; 
+  case 1048676: 
+    if(frame->stereo_state->preFilterCap > 1){
+      frame->stereo_state->preFilterCap--;
+    }
+    break; 
 
-    case 1048690: 
-	frame->stereo_state->SADWindowSize+=2;
-        break; 
-     case 1048678: 
-	frame->stereo_state->SADWindowSize-=2;
-        break; 
+  case 1048690: 
+    if(frame->stereo_state->SADWindowSize < 251){
+      frame->stereo_state->SADWindowSize+=2;
+    }
+    break; 
+  case 1048678: 
+    if(frame->stereo_state->SADWindowSize > 7 ){
+      frame->stereo_state->SADWindowSize-=2;
+    }
+    break; 
 
-    case 1048692: 
-	frame->stereo_state->minDisparity+=1;
-        break; 
-     case 1048679: 
-	frame->stereo_state->minDisparity-=1;
-        break; 
+  case 1048692: 
+    frame->stereo_state->minDisparity+=1;
+    break; 
+  case 1048679: 
+    frame->stereo_state->minDisparity-=1;
+    break; 
 		
   }
 
-   printf("k: %d pfs:%d, pfc:%d, sws:%d  md:%d\n", key,
-	frame->stereo_state->preFilterSize,frame->stereo_state->preFilterCap,frame->stereo_state->SADWindowSize,frame->stereo_state->minDisparity);
-  }
+  printf("k: %d pfs:%d, pfc:%d, sws:%d  md:%d\n", key,
+	 frame->stereo_state->preFilterSize,frame->stereo_state->preFilterCap,frame->stereo_state->SADWindowSize,frame->stereo_state->minDisparity);
+ }
 }
 
 #define DIF(x,y) ((x<y)?(y-x):(x-y))
@@ -157,22 +170,22 @@ process_usb_frame(ctx_t *ctx,stereoframe_t * stereo,  leap_frame_t * leap_frame)
 
 
 void init_stereo_frame(stereoframe_t *frame){
-   memset(frame,0,sizeof(stereoframe_t));
-   frame->stereo_state =  cvCreateStereoBMState(CV_STEREO_BM_BASIC, 64);
-   frame->cv_image_depth = cvCreateMat (  VFRAME_HEIGHT,VFRAME_WIDTH, CV_16S);
-   frame->cv_image_depth_aux = cvCreateImage (cvSize(VFRAME_WIDTH, 2 * VFRAME_HEIGHT),IPL_DEPTH_8U, 1);
-   frame->left = cvCreateImage (cvSize(VFRAME_WIDTH, VFRAME_HEIGHT),IPL_DEPTH_8U, 1);
-   frame->right = cvCreateImage (cvSize(VFRAME_WIDTH, VFRAME_HEIGHT),IPL_DEPTH_8U, 1);
+  memset(frame,0,sizeof(stereoframe_t));
+  frame->stereo_state =  cvCreateStereoBMState(CV_STEREO_BM_BASIC, 64);
+  frame->cv_image_depth = cvCreateMat (  VFRAME_HEIGHT,VFRAME_WIDTH, CV_16S);
+  frame->cv_image_depth_aux = cvCreateImage (cvSize(VFRAME_WIDTH, 2 * VFRAME_HEIGHT),IPL_DEPTH_8U, 1);
+  frame->left = cvCreateImage (cvSize(VFRAME_WIDTH, VFRAME_HEIGHT),IPL_DEPTH_8U, 1);
+  frame->right = cvCreateImage (cvSize(VFRAME_WIDTH, VFRAME_HEIGHT),IPL_DEPTH_8U, 1);
 
-   frame->stereo_state->preFilterSize 		= 49;
-   frame->stereo_state->preFilterCap 		= 63;
-   frame->stereo_state->SADWindowSize 		= 11;
-   frame->stereo_state->minDisparity 		= 2;
-   frame->stereo_state->numberOfDisparities 	= 32;
-   frame->stereo_state->textureThreshold 	= 0;
-   frame->stereo_state->uniquenessRatio 	= 0;
-   frame->stereo_state->speckleWindowSize 	= 0;
-   frame->stereo_state->speckleRange		= 0;
+  frame->stereo_state->preFilterSize 		= 49;
+  frame->stereo_state->preFilterCap 		= 63;
+  frame->stereo_state->SADWindowSize 		= 11;
+  frame->stereo_state->minDisparity 		= 2;
+  frame->stereo_state->numberOfDisparities 	= 32;
+  frame->stereo_state->textureThreshold 	= 0;
+  frame->stereo_state->uniquenessRatio 	= 0;
+  frame->stereo_state->speckleWindowSize 	= 0;
+  frame->stereo_state->speckleRange		= 0;
 }
 
 
@@ -199,7 +212,7 @@ main(int argc, char *argv[])
   }
 
 
-  for ( ; ; ) {
+ for ( ; ; ) {
 
     if ( ctx->quit )
       break ;
@@ -208,11 +221,12 @@ main(int argc, char *argv[])
       ret = leap_transfer(leap);
       if(ret == LEAP_ERROR){
 	printf("error transfering frame\n");
-	return 1;
+	goto NEXT_FRAME; 
       }
     }while(ret != FRAME_TRANSFERED);
     
     process_usb_frame(ctx,&stereo, leap_get_current_frame(leap));
+ NEXT_FRAME:;
   }
 
   return (0);
