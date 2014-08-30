@@ -41,6 +41,14 @@ struct stereoframe_s{
 /* Function to compute StereoBM and update the result on the window */
 static void computeStereoBM ( stereoframe_t *data )
 {
+
+  cvSmooth(data->left,data->left,CV_GAUSSIAN,3,0,0,0);
+  cvSmooth(data->right,data->right,CV_GAUSSIAN,3,0,0,0);
+  //adaptiveBilateralFilter(data->left, data-> left, 15,80,80);
+  //adaptiveBilateralFilter(data->right, data-> right, 15,80,80);
+       cvCanny( data->left, data->left, 10, 100, 3 );
+       cvCanny( data->right, data->right, 10, 100, 3 );
+
 	int i, j, aux;
 	uchar *ptr_dst;
 	cvFindStereoCorrespondenceBM ( 
@@ -50,7 +58,7 @@ static void computeStereoBM ( stereoframe_t *data )
 		data->stereo_state
 	);
 	//Normalize the result so we can display it
-	cvNormalize( data->cv_image_depth, data->cv_image_depth, 0, 256, CV_MINMAX, NULL );
+	//		cvNormalize( data->cv_image_depth, data->cv_image_depth, 0, 256, CV_MINMAX, NULL );
 	for ( i = 0; i < data->cv_image_depth->rows; i++)
 	{
 		aux = data->cv_image_depth->cols * i;
@@ -71,10 +79,11 @@ static void
 process_video_frame(ctx_t *ctx, stereoframe_t *frame)
 {
   int key;
-
+  
   cvShowImage("left", frame->left );
   cvShowImage("right", frame->right );
-  cvShowImage(WINDOWNAME, frame->cv_image_depth_aux );
+  //  cvShowImage("mat", frame->cv_image_depth );
+  // cvShowImage(WINDOWNAME, frame->cv_image_depth_aux );
 
   key = cvWaitKey(1);
 
@@ -96,7 +105,6 @@ if(key > 0){
 	frame->stereo_state->preFilterSize-=2;
        }
        break; 
-
   case 1048677: 
     if(frame->stereo_state->preFilterCap < 63){
       frame->stereo_state->preFilterCap++;
@@ -165,7 +173,6 @@ process_usb_frame(ctx_t *ctx,stereoframe_t * stereo,  leap_frame_t * leap_frame)
   }
   
   computeStereoBM(stereo);
-  process_video_frame(ctx, stereo);
 }
 
 
@@ -177,11 +184,11 @@ void init_stereo_frame(stereoframe_t *frame){
   frame->left = cvCreateImage (cvSize(VFRAME_WIDTH, VFRAME_HEIGHT),IPL_DEPTH_8U, 1);
   frame->right = cvCreateImage (cvSize(VFRAME_WIDTH, VFRAME_HEIGHT),IPL_DEPTH_8U, 1);
 
-  frame->stereo_state->preFilterSize 		= 49;
+  frame->stereo_state->preFilterSize 		= 61;
   frame->stereo_state->preFilterCap 		= 63;
-  frame->stereo_state->SADWindowSize 		= 11;
-  frame->stereo_state->minDisparity 		= 2;
-  frame->stereo_state->numberOfDisparities 	= 32;
+  frame->stereo_state->SADWindowSize 		= 47;
+  frame->stereo_state->minDisparity 		= -11;
+  frame->stereo_state->numberOfDisparities 	= 64;
   frame->stereo_state->textureThreshold 	= 0;
   frame->stereo_state->uniquenessRatio 	= 0;
   frame->stereo_state->speckleWindowSize 	= 0;
@@ -198,8 +205,8 @@ main(int argc, char *argv[])
 
   ctx_t *ctx = &ctx_data;
 
-  cvNamedWindow(WINDOWNAME, 0);
-  cvResizeWindow(WINDOWNAME, VFRAME_WIDTH, VFRAME_HEIGHT * 2);
+  //  cvNamedWindow(WINDOWNAME, 0);
+  //cvResizeWindow(WINDOWNAME, VFRAME_WIDTH, VFRAME_HEIGHT * 2);
 
   stereoframe_t stereo; 
 
@@ -226,6 +233,7 @@ main(int argc, char *argv[])
     }while(ret != FRAME_TRANSFERED);
     
     process_usb_frame(ctx,&stereo, leap_get_current_frame(leap));
+    process_video_frame(ctx, &stereo);
  NEXT_FRAME:;
   }
 

@@ -17,7 +17,7 @@ CC = c99
 	$(CC) -c $(CFLAGS) $(LIBUSB_CFLAGS)  $<
 
 
-all: low-level-leap-test display-leap-data-sdl display-leap-data-opencv stereo_view
+all: low-level-leap-test display-leap-data-sdl display-leap-data-opencv bin/stereo_view
 
 clean:
 	rm -f *.o
@@ -39,5 +39,11 @@ display-leap-data-sdl: display-leap-data-sdl.o
 display-leap-data-opencv: display-leap-data-opencv.o
 	$(CC) -o $@ $^ $(LDFLAGS) $(OPENCV_LDFLAGS)
 
-stereo_view: stereo_view.o low-level-leap.o
+
+bin/stereo_view: stereo_view.o low-level-leap.o
+	mkdir -p bin 
 	$(CC) -o $@ $^ $(LDFLAGS) $(OPENCV_LDFLAGS) 
+
+
+run: bin/stereo_view
+	bin/stereo_view
